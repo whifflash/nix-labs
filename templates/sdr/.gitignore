@@ -1,0 +1,9 @@
+.direnv/
+result
+result-*
+# raw IQ recordings get large quickly
+*.cfile
+*.cf32
+*.cs16
+*.iq
+*.wav

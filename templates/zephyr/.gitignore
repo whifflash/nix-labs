@@ -1,0 +1,11 @@
+.direnv/
+result
+result-*
+# west workspace: everything `west update` clones lives next to app/
+/.west/
+/zephyr/
+/modules/
+/bootloader/
+/tools/
+# build output
+build/

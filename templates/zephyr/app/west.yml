@@ -1,0 +1,28 @@
+# West manifest (T2 topology): this directory is the manifest repo; Zephyr and
+# the HAL modules are cloned as siblings by `west update`. Every module you do
+# not list here is a clone you do not wait for — trim the allowlist to your chips.
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      # Keep in step with the zephyr-nix pin nix-labs uses for the Python environment.
+      revision: v4.3.0
+      import:
+        name-allowlist:
+          - cmsis
+          - cmsis_6
+          - hal_nordic # nRF52/53/54
+          - hal_stm32 # STM32
+          - hal_rpi_pico # RP2040 / RP2350
+          - hal_espressif # ESP32 family (large; drop if unused)
+          - mbedtls
+          - picolibc
+          - segger
+          - zcbor
+
+  self:
+    path: app
