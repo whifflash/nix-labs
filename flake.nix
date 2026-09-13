@@ -50,8 +50,10 @@
         # catalogue and the udev rule generator (see docs/HARDWARE.md).
         lib = import ./lib { inherit (nixpkgs) lib; };
 
-        # pulseview-sipeed / sigrok-cli-sipeed (nixpkgs' libsigrok-sipeed) and
-        # the `lab` helper, for consumers who prefer an overlay to `packages`.
+        # pulseview-sipeed / sigrok-cli-sipeed (against nixpkgs' libsigrok-sipeed)
+        # and the MCP servers, for consumers who prefer an overlay to `packages`.
+        # `lab` is not here: it needs the catalogue and the rendered MCP configs,
+        # so it comes from `packages.lab` or the home-manager module.
         overlays.default = final: _prev: import ./pkgs { pkgs = final; };
 
         # NixOS: `labs.enable` — udev rules for lab hardware, plugdev/dialout
@@ -71,9 +73,17 @@
             path = ./templates/sdr;
             description = "SDR workspace pinned to the nix-labs sdr shell (direnv)";
           };
-          logic = {
-            path = ./templates/logic;
-            description = "Logic-analyzer capture workspace pinned to the nix-labs logic shell (direnv)";
+          slogic = {
+            path = ./templates/slogic;
+            description = "Logic-analyzer capture workspace pinned to the nix-labs slogic shell (direnv + MCP)";
+          };
+          eda = {
+            path = ./templates/eda;
+            description = "Circuit design + simulation workspace (KiCad, ngspice) pinned to the nix-labs eda shell";
+          };
+          ai = {
+            path = ./templates/ai;
+            description = "Project wired to the nix-labs ai shell (agents + MCP servers)";
           };
         };
       };
@@ -86,18 +96,55 @@
           ...
         }:
         let
+          catalogue = import ./labs/catalogue.nix;
+
+          # Several AI agents carry vendor licences nixpkgs marks unfree. Allow
+          # exactly those, for the `ai` environment only — the rest of this
+          # flake stays free-only.
+          aiPkgs = import inputs.nixpkgs {
+            inherit system;
+            config.allowUnfreePredicate =
+              p:
+              builtins.elem (lib.getName p) [
+                "claude-code"
+                "crush"
+              ];
+          };
+
           # Everything an environment needs, instantiated for a given package
           # set — used for the host system here and for the VM guest system.
           labsFor =
             pkgs':
+            let
+              labPkgs' = import ./pkgs { pkgs = pkgs'; };
+              mcpServers' = import ./pkgs/mcp {
+                pkgs = pkgs';
+                labPkgs = labPkgs';
+              };
+            in
             import ./labs {
               pkgs = pkgs';
-              inherit lib;
-              labPkgs = import ./pkgs { pkgs = pkgs'; };
+              inherit lib aiPkgs;
+              labPkgs = labPkgs';
+              mcpServers = mcpServers';
+              mcpConfigs = mcpConfigsFor pkgs' mcpServers';
               zephyr = inputs.zephyr-nix.lib.mkZephyr { pkgs = pkgs'; };
             };
-          labs = labsFor pkgs;
+
+          mcpConfigsFor =
+            pkgs': servers':
+            pkgs'.callPackage ./pkgs/mcp-config.nix {
+              inherit catalogue;
+              servers = servers';
+              mcpLib = self.lib.mcp;
+            };
+
           labPkgs = import ./pkgs { inherit pkgs; };
+          mcpServers = import ./pkgs/mcp { inherit pkgs labPkgs; };
+          mcpConfigs = mcpConfigsFor pkgs mcpServers;
+          labs = labsFor pkgs;
+
+          lab = pkgs.callPackage ./pkgs/lab.nix { inherit catalogue mcpConfigs; };
 
           vms = import ./vm {
             inherit lib labsFor;
@@ -118,7 +165,11 @@
           packages =
             labPkgs
             // vms
+            # `nix run labs#mcp-<name>` — what the generated configs invoke —
+            # for every server, including the ones that are plain nixpkgs.
+            // lib.mapAttrs' (n: s: lib.nameValuePair "mcp-${n}" s.package) mcpServers
             // {
+              inherit lab mcpConfigs;
               inherit (pkgs) libsigrok-sipeed;
             };
 
@@ -147,7 +198,17 @@
             # writeShellApplication shellchecks at build time: build the CLI and
             # the VM runner's script body (the runner itself would build a whole
             # guest system, so only its text is checked here).
-            lab-cli = labPkgs.lab;
+            lab-cli = lab;
+            # The three MCP wire formats parse, and every environment that claims
+            # servers really gets them (see docs/MCP.md).
+            mcp-render = import ./checks/mcp-render.nix {
+              inherit
+                pkgs
+                lib
+                mcpConfigs
+                catalogue
+                ;
+            };
             vm-runner-script = pkgs.writeShellApplication {
               name = "lab-vm-runner-check";
               runtimeInputs = [ pkgs.usbredir ];

@@ -53,7 +53,7 @@ gqrx             # device string: soapy=0,driver=lime
 LimeSDR-USB needs USB 3 for high sample rates; inside `lab vm sdr` (USB over TCP) stay at a
 few MS/s — the VM is for GUI/analysis convenience, not for wideband capture.
 
-## Logic analyzer — `logic`
+## Logic analyzer — `slogic`
 
 PulseView and sigrok-cli from nixpkgs, rebuilt against nixpkgs' `libsigrok-sipeed` (Sipeed's
 `slogic-dev` libsigrok with the `sipeed-slogic-analyzer` driver: SLogic Combo8, 16U3, 32U3).
@@ -66,7 +66,66 @@ pulseview
 ```
 
 The driver is plain libusb — no kernel module — so it works natively on Linux (with the
-udev rules) and should on macOS; `lab vm logic` is the fallback if it does not.
+udev rules) and should on macOS; `lab vm slogic` is the fallback if it does not.
+
+The `sigrok` MCP server is in this shell too — `lab mcp slogic --write` and an agent can scan,
+capture and decode for you (see [MCP.md](MCP.md)).
+
+## Circuit design + simulation — `eda`
+
+KiCad for schematic capture and PCB layout, SPICE for finding out what the circuit does before
+the board is ordered, and viewers for checking what you are about to order.
+
+| | |
+|---|---|
+| design | `kicad` 10 (+ `kicad-cli`), `kikit` (panelisation/fab export), `interactive-html-bom`, `freerouting`, `librepcb`, `horizon-eda` — **Linux** |
+| simulation | `ngspice`, `qucs-s` (both platforms); `xyce`, `xschem`, `gnucap`, `gaw`, `openems`, `elmerfem` — Linux |
+| output/inspection | `gerbv`, `klayout` |
+| scripting | python312 with `skidl` (netlist as code), numpy/scipy/matplotlib/pandas |
+
+```sh
+ngspice -b sim/rc.cir                      # the template's example: prints the -3 dB corner
+qucs-s                                     # schematic front-end for ngspice/Xyce
+kicad                                      # Linux
+kicad-cli pcb drc board.kicad_pcb -o drc.rpt
+gerbv gerbers/*.gbr
+```
+
+python is 3.12 here, not the default 3.13: `skidl`'s `future` dependency does not build on 3.13
+in this nixpkgs.
+
+**macOS**: KiCad is not in nixpkgs for darwin. The simulation half works natively; for KiCad
+itself either install it from [kicad.org](https://www.kicad.org/download/) (the `kicad` MCP
+server will find it) or run `lab vm eda`, which boots KiCad in a Linux VM.
+
+The `kicad` MCP server is in the shell — `lab mcp eda --write`, then ask about nets, DRC or the
+BOM (see [MCP.md](MCP.md)).
+
+Digital HDL (verilator, yosys, nextpnr, iverilog, gtkwave) is deliberately not here — that is a
+different workflow and belongs in its own `hdl` environment if it is ever wanted.
+
+## AI agents — `ai`
+
+One pinned bench of coding agents, so every machine has the same set regardless of what is
+installed globally: `opencode`, `pi`, `claude-code`, `codex`, `gemini-cli`, `qwen-code`, `crush`,
+`goose`, `aider`. Plus context tooling (`repomix`, `files-to-prompt`, `llm`, `mods`, `aichat`,
+`fabric-ai`, `ast-grep`, `ripgrep`, `fd`, `difftastic`, `gh`, `glab`), the MCP servers of every
+lab, and `nodejs`/`uv`/`bun` so the `npx -y …` and `uvx …` servers other people publish run
+(`npx @modelcontextprotocol/inspector` is the debugger — nixpkgs has no `mcp-inspector`).
+
+**Licensing note**: `claude-code` and `crush` are marked unfree in nixpkgs. This environment —
+and only this one — uses a package set with an `allowUnfreePredicate` naming exactly those two
+(`labs/ai/default.nix`); nothing else in the flake evaluates unfree derivations.
+
+**No credentials are in the environment.** Each agent reads its own key from the environment
+(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, …) or
+from its config under `$HOME` (`~/.claude`, `~/.config/opencode`, `~/.pi`, `~/.codex`), which
+the shell leaves untouched. Entering `lab ai` shadows a globally installed agent for the
+duration of the shell — that is the point, but it explains a version that differs from your
+everyday `claude`.
+
+Local models (`ollama`, `llama-cpp`, `open-webui`) are intentionally out of scope here; they
+would make a natural `ai-local` environment.
 
 ## PlatformIO — `platformio` (Linux only)
 
@@ -83,7 +142,7 @@ pio run -t upload && pio device monitor
 
 ## Templates — `lab init <env> [dir]`
 
-`nix flake init -t labs#{zephyr,sdr,logic}`: a `flake.nix` that re-exports the chosen shell
+`nix flake init -t labs#{zephyr,sdr,slogic,eda,ai}`: a `flake.nix` that re-exports the chosen shell
 (pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README; the Zephyr template adds
 the `app/` manifest repo (west.yml with a small allowlist, CMakeLists, prj.conf, hello world).
 `lab init` rewrites the shell name for the variant you asked for.

@@ -17,6 +17,7 @@
   template ? null,
   shell ? null,
   linuxOnly ? false,
+  mcp ? [ ],
 }:
 let
   banner = ''
@@ -34,6 +35,7 @@ in
     vm
     template
     linuxOnly
+    mcp
     ;
 
   # mkShell (with a host compiler: Zephyr's native_sim, Python wheels and the

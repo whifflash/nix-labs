@@ -5,6 +5,9 @@
   lib,
   labPkgs,
   zephyr,
+  aiPkgs,
+  mcpServers,
+  mcpConfigs,
 }:
 let
   catalogue = import ./catalogue.nix;
@@ -12,8 +15,18 @@ let
 
   defs =
     import ./zephyr { inherit pkgs lib zephyr; }
-    // import ./sdr { inherit pkgs lib; }
-    // import ./logic { inherit pkgs lib labPkgs; }
+    // import ./sdr { inherit pkgs lib labPkgs; }
+    // import ./slogic { inherit pkgs lib labPkgs; }
+    // import ./eda { inherit pkgs lib labPkgs; }
+    // import ./ai {
+      inherit
+        pkgs
+        lib
+        aiPkgs
+        labPkgs
+        mcpServers
+        ;
+    }
     // import ./platformio { inherit pkgs lib; };
 
   # Linux-only environments simply do not exist on darwin (see labs/platformio).
@@ -23,6 +36,21 @@ let
 
   missing = lib.subtractLists (lib.attrNames defs) (lib.attrNames expected);
   extra = lib.subtractLists (lib.attrNames expected) (lib.attrNames defs);
+
+  # An environment with MCP servers gets LAB_MCP_CONFIG pointing at its
+  # ready-made canonical config (store paths — the servers are in the shell
+  # anyway), so `claude --mcp-config "$LAB_MCP_CONFIG"` works with no setup.
+  withMcp =
+    name: def:
+    let
+      hasMcp = (catalogue.${name}.mcp or [ ]) != [ ];
+    in
+    def
+    // lib.optionalAttrs hasMcp {
+      env = (def.env or { }) // {
+        LAB_MCP_CONFIG = "${mcpConfigs}/${name}/store.json";
+      };
+    };
 in
 assert lib.assertMsg (
   missing == [ ]
@@ -30,4 +58,4 @@ assert lib.assertMsg (
 assert lib.assertMsg (
   extra == [ ]
 ) "labs/ defines environments missing from labs/catalogue.nix: ${toString extra}";
-lib.mapAttrs (name: def: mkLab (catalogue.${name} // def // { inherit name; })) defs
+lib.mapAttrs (name: def: mkLab (catalogue.${name} // (withMcp name def) // { inherit name; })) defs

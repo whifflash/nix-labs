@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-soapysdr"
+version = "0.1.0"
+description = "MCP server for SoapySDR radios (LimeSDR, RTL-SDR, HackRF, …)"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "mcp>=1.0.0",
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "matplotlib>=3.7",
+]
+
+[project.scripts]
+mcp-soapysdr = "mcp_soapysdr.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_soapysdr"]

@@ -5,24 +5,27 @@ run on Linux and macOS alike. The VM exists for the cases where that fails (a ma
 PulseView that does not work, a driver that needs Linux udev/kernel behaviour) — not as the
 default way to use the hardware.
 
+The exception is **`lab vm eda`**: KiCad is not in nixpkgs for macOS at all, so on a Mac the VM
+is a first-class way to run it (no USB involved — the runner simply starts without redirection).
+
 ```sh
-lab vm logic                          # = nix run labs#lab-vm-logic
-lab vm logic -- -m 8G                 # extra QEMU arguments after --
+lab vm slogic                          # = nix run labs#lab-vm-slogic
+lab vm slogic -- -m 8G                 # extra QEMU arguments after --
 lab vm sdr --usb 1d50:6108 --usb 0bda:2838 --share ~/captures --kbd de
-lab-vm-logic --help
+lab-vm-slogic --help
 ```
 
 ## What runs
 
 - **Guest**: NixOS (`vm/guest.nix`) on nixpkgs' `qemu-vm` module — `services.cage` kiosk
-  starting the environment's GUI (`pulseview`, `sdrpp`; restarted when closed), the
+  starting the environment's GUI (`pulseview`, `sdrpp`, `kicad`; restarted when closed), the
   environment's packages installed system-wide, the nix-labs udev rules, `sshd`, user `lab`
   (password `lab`, passwordless sudo). 4 GiB RAM, 4 cores, 8 GiB disk (persistent qcow2 under
   `~/.local/state/nix-labs/vm/<env>/`).
 - **Host runner** (`vm/runner.sh`): starts the guest's run script, then for every USB device
   one `usbredirect --device VID:PID --to 127.0.0.1:<port>` against a QEMU `usb-redir` device on
   the guest's xHCI controller — re-attached automatically when the device is replugged. Defaults
-  come from `lib/hardware.nix` (`logic`: `359f:3031`, `2b1c:3031`; `sdr`: `1d50:6108`, …);
+  come from `lib/hardware.nix` (`slogic`: `359f:3031`, `2b1c:3031`; `sdr`: `1d50:6108`, …);
   `--usb` replaces them, `--no-usb` disables redirection.
 - **Share**: `--share DIR` (default `$HOME/lab`) is the guest's `/home/lab/work` (9p) — the
   kiosk program starts there, captures land on the host. `ssh -p 2223 lab@127.0.0.1` for

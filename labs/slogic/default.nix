@@ -3,17 +3,18 @@
 # nixpkgs ships `libsigrok-sipeed` (Sipeed's slogic-dev branch, driver
 # `sipeed-slogic-analyzer`, Combo8/16U3/32U3); PulseView and sigrok-cli are
 # rebuilt against it in ../../pkgs. The driver is plain libusb, so this works
-# natively on Linux and macOS; `lab vm logic` is the fallback.
+# natively on Linux and macOS; `lab vm slogic` is the fallback.
 {
   pkgs,
   lib,
   labPkgs,
 }:
 {
-  logic = {
+  slogic = {
     packages = [
       labPkgs.pulseview-sipeed
       labPkgs.sigrok-cli-sipeed
+      labPkgs.mcp-sigrok # agent access: scan, capture, decode, render
       pkgs.libsigrok-sipeed
       pkgs.sigrok-firmware-fx2lafw # for the cheap fx2 "Saleae clone" analyzers
     ]
@@ -25,6 +26,7 @@
     shellHook = ''
       echo "  scan:  sigrok-cli --driver sipeed-slogic-analyzer --scan"
       echo "  gui:   pulseview"
+      echo "  agent: lab mcp slogic --write   (then ask it to capture and decode)"
     '';
   };
 }

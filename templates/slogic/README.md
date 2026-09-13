@@ -1,6 +1,6 @@
 # Logic-analyzer workspace
 
-Pinned to the `logic` environment of [nix-labs](https://github.com/whifflash/nix-labs):
+Pinned to the `slogic` environment of [nix-labs](https://github.com/whifflash/nix-labs):
 PulseView and sigrok-cli built against libsigrok with the Sipeed SLogic driver.
 
 ```sh
@@ -13,5 +13,5 @@ sigrok-cli --driver sipeed-slogic-analyzer --config samplerate=20m --samples 1M 
 ```
 
 No device found? On Linux the host needs the nix-labs udev rules (`labs.enable`); on macOS
-try `lab vm logic` if PulseView cannot open the analyzer natively.
+try `lab vm slogic` if PulseView cannot open the analyzer natively.
 Re-pin: `nix flake update nix-labs`.

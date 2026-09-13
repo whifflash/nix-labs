@@ -10,6 +10,9 @@
   # udevRules { devices ? <all>; group ? "plugdev"; } → rules text.
   udevRules = import ./udev-rules.nix { inherit lib; };
 
+  # MCP config renderers: canonical (Claude Code/gemini/qwen/pi), opencode, codex.
+  mcp = import ./mcp.nix { inherit lib; };
+
   # mkLab pkgs { name; description; packages; env; shellHook; … } → { devShell; … }
   mkLab = pkgs: import ./mk-lab.nix { inherit pkgs lib; };
 }

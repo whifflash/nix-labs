@@ -8,13 +8,24 @@
 }:
 let
   cfg = config.labs;
+
+  catalogue = import ../labs/catalogue.nix;
+  labPkgs = import ../pkgs { inherit pkgs; };
+  # Rendering MCP configs needs only pkgs + the catalogue (never the zephyr
+  # input), which is why pkgs/mcp is kept independent of labs/.
+  mcpConfigs = pkgs.callPackage ../pkgs/mcp-config.nix {
+    inherit catalogue;
+    inherit (cfg) flakeRef;
+    servers = import ../pkgs/mcp { inherit pkgs labPkgs; };
+    mcpLib = import ../lib/mcp.nix { inherit lib; };
+  };
 in
 {
   options.labs = {
     cli.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Install the `lab` helper (list / enter / init / vm) on PATH.";
+      description = "Install the `lab` helper (list / enter / init / vm / mcp) on PATH.";
     };
 
     flakeRef = lib.mkOption {
@@ -39,7 +50,7 @@ in
       home.packages = [
         (pkgs.callPackage ../pkgs/lab.nix {
           inherit (cfg) flakeRef;
-          catalogue = import ../labs/catalogue.nix;
+          inherit catalogue mcpConfigs;
         })
       ];
     })

@@ -1,0 +1,19 @@
+* RC low-pass — a self-contained ngspice netlist to prove the toolchain works.
+* Run it headless:  ngspice -b sim/rc.cir
+* 1 kΩ / 100 nF gives f_c = 1/(2*pi*R*C) ≈ 1.59 kHz.
+
+V1 in 0 DC 0 AC 1 PULSE(0 1 0 1n 1n 500u 1m)
+R1 in out 1k
+C1 out 0 100n
+
+.control
+  ac dec 20 10 1meg
+  let mag_db = db(v(out))
+  print v(out)[0] > /dev/null          $ force evaluation
+  meas ac fc when mag_db=-3            $ the -3 dB corner
+  tran 1u 2m
+  meas tran vfinal FIND v(out) AT=1.9m $ settled step response
+  quit
+.endc
+
+.end

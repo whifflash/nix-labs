@@ -6,6 +6,8 @@
 #   template     templates/<name> used by `lab init <env>`
 #   usb          lib/hardware.nix keys the environment talks to
 #   vm           null, or { program = "<binary>"; } → a `lab-vm-<env>` runner exists
+#   mcp          MCP server names the environment provides (details in labs/<env>);
+#                listed here so `lab list` / `lab mcp` know without evaluating a shell
 {
   zephyr-arm = {
     description = "Zephyr RTOS — ARM Cortex-M (nRF, STM32, RP2040, NXP): arm-zephyr-eabi SDK, west, openocd, probe-rs, pyocd";
@@ -61,6 +63,7 @@
     vm = {
       program = "sdrpp";
     };
+    mcp = [ "soapysdr" ];
   };
 
   sdr-full = {
@@ -74,13 +77,38 @@
     vm = null;
   };
 
-  logic = {
+  slogic = {
     description = "Logic analyzer — PulseView + sigrok-cli built against libsigrok-sipeed (Sipeed SLogic driver), fx2lafw firmware";
-    template = "logic";
+    template = "slogic";
     usb = [ "sipeed-slogic" ];
     vm = {
       program = "pulseview";
     };
+    mcp = [ "sigrok" ];
+  };
+
+  eda = {
+    description = "Circuit design + simulation — KiCad, ngspice/Xyce/Qucs-s/xschem, gerbv, KLayout, FreeRouting, KiKit, SKiDL";
+    template = "eda";
+    usb = [ "usb-serial" ]; # bench instruments on USB-TTL
+    vm = {
+      # KiCad is Linux-only in nixpkgs, so on macOS this VM *is* the way to run it.
+      program = "kicad";
+    };
+    mcp = [ "kicad" ];
+  };
+
+  ai = {
+    description = "AI coding agents — opencode, pi, claude-code, codex, gemini-cli, qwen-code, crush, goose, aider + context and MCP tooling";
+    template = "ai";
+    usb = [ ];
+    vm = null;
+    mcp = [
+      "nixos"
+      "github"
+      "fetch"
+      "playwright"
+    ];
   };
 
   platformio = {

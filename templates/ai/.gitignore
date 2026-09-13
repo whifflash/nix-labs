@@ -1,0 +1,10 @@
+.direnv/
+result
+result-*
+
+# Agent scratch state (keep .mcp.json and opencode.json — those are config)
+.claude/
+.opencode/
+.pi/
+.aider*
+repomix-output.*
