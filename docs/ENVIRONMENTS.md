@@ -71,6 +71,37 @@ udev rules) and should on macOS; `lab vm slogic` is the fallback if it does not.
 The `sigrok` MCP server is in this shell too — `lab mcp slogic --write` and an agent can scan,
 capture and decode for you (see [MCP.md](MCP.md)).
 
+### When PulseView crashes
+
+There is no older PulseView worth falling back to: upstream's last release (0.4.2, 2020) no
+longer configures on a current toolchain — CMake 4 rejects its `cmake_minimum_required(2.8)`
+and Boost 1.89 no longer provides the `boost_system` component it asks for — and the git
+snapshot nixpkgs ships differs from the revision it shipped for the previous two years by
+seven commits, all of them CI, CMake and compiler-warning fixes. Debug the snapshot instead:
+
+```sh
+pulseview -l 5 2>&1 | tee /tmp/pv.log     # sigrok log level 5
+mv ~/.config/sigrok/PulseView.conf{,.bak} # stale session restore: the #1 startup crash
+pulseview --driver demo                   # is any hardware involved at all?
+QT_QPA_PLATFORM=xcb pulseview             # Wayland vs XWayland
+
+nix build labs#pulseview-sipeed-debug     # RelWithDebInfo, unstripped
+./result/bin/pulseview                    # reproduce the crash with this one
+coredumpctl gdb pulseview                 # then: bt / info sharedlibrary
+```
+
+`bin/pulseview` is a Qt wrapper script, so gdb cannot exec it directly — use `coredumpctl`, or
+start PulseView and attach (`pulseview & sleep 3; gdb -p $!`). The debug build is
+RelWithDebInfo rather than Debug on purpose: same `-O2` as the binary that crashes, so the
+trace corresponds to it. For source lines in gdb, point it at the unpacked tree:
+
+```sh
+set substitute-path /build/source $(nix build --no-link --print-out-paths labs#pulseview-sipeed-debug.src)
+```
+
+The headless path (`sigrok-cli`, the MCP server) shares the same libsigrok and is unaffected by
+GUI faults.
+
 ## Circuit design + simulation — `eda`
 
 KiCad for schematic capture and PCB layout, SPICE for finding out what the circuit does before
