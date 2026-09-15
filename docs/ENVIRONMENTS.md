@@ -61,9 +61,29 @@ PulseView and sigrok-cli from nixpkgs, rebuilt against nixpkgs' `libsigrok-sipee
 
 ```sh
 sigrok-cli --driver sipeed-slogic-analyzer --scan
-sigrok-cli --driver sipeed-slogic-analyzer --config samplerate=20m --samples 1M -o capture.sr
+sigrok-cli --driver sipeed-slogic-analyzer --show          # options + current values
+sigrok-cli --driver sipeed-slogic-analyzer \
+  --config logic_channels=8:samplerate=20m --samples 1M -o capture.sr
 pulseview
 ```
+
+**Always give it a sample count.** The driver has no default (`limit_samples: 0` after scan;
+`cur_limit_samples` is only ever assigned from `SR_CONF_LIMIT_SAMPLES`), and
+`dev_acquisition_start` sizes its transfer loop from `limit_samples × channels / 8`. With no
+limit that is zero, so it submits zero transfers and returns `SR_ERR_IO` **without logging
+anything** — the capture just ends in ~0.02 s with no data and no error. It also advertises
+`SR_CONF_CONTINUOUS`, which it cannot actually honour, so **in PulseView pick a fixed sample
+count rather than continuous mode** or every capture comes back empty.
+
+The channel count comes from the `logic_channels` option, not from which channels you tick;
+legal values are 4, 8 or 16 for the 16U3, and the rate ceiling follows it (800/400/200 MHz on
+Linux). Rates must come from the device's own list (`--show`).
+
+Three log lines are harmless noise, all from the driver: `Align up to 4(from 2)!` (control
+transfers padded to 4 bytes), `Device instance not active, can't set config` (`dev_open` calls
+`sr_config_set` before libsigrok marks the instance active — the value was already assigned
+directly), and `Failed to configure vref` (the check compares the read-back register against
+the constant 1024 instead of the value written; the write succeeds).
 
 The driver is plain libusb — no kernel module — so it works natively on Linux (with the
 udev rules) and should on macOS; `lab vm slogic` is the fallback if it does not.
