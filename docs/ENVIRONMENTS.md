@@ -147,6 +147,40 @@ everyday `claude`.
 Local models (`ollama`, `llama-cpp`, `open-webui`) are intentionally out of scope here; they
 would make a natural `ai-local` environment.
 
+## Parametric CAD — `cad`
+
+Design parts by writing text, keep the text in git, and export what the next machine needs.
+
+| | |
+|---|---|
+| primary engine | **build123d** — Python on the OpenCASCADE B-rep kernel. Real solids: fillets and chamfers are exact operations, and it exports **STEP** (CNC, further CAD) as well as STL / 3MF / GLB / BREP. |
+| second engine | **OpenSCAD** (`openscad-unstable`, the 2026 nightly with manifold CSG — far faster than the 2021.01 release), plus `openscad-lsp` and `solidpython2` for writing Python that emits `.scad`. Mesh/CSG only: no STEP. |
+| preview | `cad-watch` — re-runs the script on save and leaves **f3d** watching the export, which reloads it. Editor-agnostic by design. |
+| mesh side | trimesh, meshio, numpy-stl, manifold3d; PrusaSlicer and OrcaSlicer on Linux |
+
+```sh
+lab init cad ~/src/bracket && cd ~/src/bracket && direnv allow
+cad-watch model.py                 # edit in your editor, f3d reloads on save
+cad-watch model.py --format step   # hand the viewer exact surfaces, not a mesh
+python model.py                    # one-shot export
+openscad part.scad                 # the DSL half (Design → Automatic Reload and Preview)
+```
+
+A model script assigns its finished solid to **`result`** (or passes it to `show_object()`) —
+that is the one convention `cad-watch` and the MCP server share. Units are millimetres.
+
+The `cad` MCP server puts the same thing in an agent's hands: run a script, export, render
+previews it can actually look at, and read exact mass properties from the kernel rather than
+from a tessellation — plus `list_api`, because the usual way generated CAD fails is calling
+methods that do not exist. See [MCP.md](MCP.md).
+
+**macOS**: everything modelling-related works natively (the OCP wheels cover arm64). The
+slicers do not — nixpkgs' PrusaSlicer and OrcaSlicer pull `webkitgtk`, which is marked broken
+on darwin — so install those from their own releases.
+
+**Which engine**: build123d unless the part is trivial or you are remixing an existing `.scad`
+design. OpenSCAD cannot produce STEP, and its fillets are approximations you build by hand.
+
 ## PlatformIO — `platformio` (Linux only)
 
 For boards and frameworks outside Zephyr (Arduino, ESP-IDF, STM32Cube, …). PlatformIO
@@ -162,7 +196,7 @@ pio run -t upload && pio device monitor
 
 ## Templates — `lab init <env> [dir]`
 
-`nix flake init -t labs#{zephyr,sdr,slogic,eda,ai}`: a `flake.nix` that re-exports the chosen shell
+`nix flake init -t labs#{zephyr,sdr,slogic,eda,cad,ai}`: a `flake.nix` that re-exports the chosen shell
 (pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README; the Zephyr template adds
 the `app/` manifest repo (west.yml with a small allowlist, CMakeLists, prj.conf, hello world).
 `lab init` rewrites the shell name for the variant you asked for.

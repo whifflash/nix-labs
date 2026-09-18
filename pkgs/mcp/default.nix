@@ -20,6 +20,11 @@
     description = "Software-defined radios via SoapySDR (LimeSDR, RTL-SDR, HackRF, …): probe, capture IQ, PSD and spectrogram images, band scans, FM demodulation";
   };
 
+  cad = {
+    package = labPkgs.mcp-cad;
+    description = "Parametric CAD with build123d: run a script, export STEP/STL/3MF, render previews as images, report exact mass properties from the B-rep; also compiles OpenSCAD";
+  };
+
   kicad = {
     package = labPkgs.mcp-kicad;
     description = "KiCad projects: list/inspect projects, extract netlists and BOMs, run DRC via kicad-cli, visualise boards, recognise circuit patterns";

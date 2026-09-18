@@ -1,0 +1,13 @@
+.direnv/
+result
+result-*
+
+# Generated geometry — the model files are the source of truth, these are not.
+build/
+*.stl
+*.step
+*.stp
+*.3mf
+*.glb
+*.brep
+*.gcode

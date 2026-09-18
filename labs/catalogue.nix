@@ -98,6 +98,14 @@
     mcp = [ "kicad" ];
   };
 
+  cad = {
+    description = "Parametric CAD as code — build123d (Python/OCCT: STEP + STL), OpenSCAD, live preview via f3d";
+    template = "cad";
+    usb = [ ];
+    vm = null;
+    mcp = [ "cad" ];
+  };
+
   ai = {
     description = "AI coding agents — opencode, pi, claude-code, codex, gemini-cli, qwen-code, crush, goose, aider + context and MCP tooling";
     template = "ai";

@@ -77,6 +77,10 @@
             path = ./templates/slogic;
             description = "Logic-analyzer capture workspace pinned to the nix-labs slogic shell (direnv + MCP)";
           };
+          cad = {
+            path = ./templates/cad;
+            description = "Parametric CAD workspace (build123d + OpenSCAD) pinned to the nix-labs cad shell";
+          };
           eda = {
             path = ./templates/eda;
             description = "Circuit design + simulation workspace (KiCad, ngspice) pinned to the nix-labs eda shell";

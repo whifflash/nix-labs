@@ -9,6 +9,7 @@ machine with Nix (NixOS, other Linux, macOS):
 | `sdr` / `sdr-full` | LimeSuite, SoapySDR (+ Lime/rtl-sdr/HackRF modules), SDR++, gqrx, urh, inspectrum, rtl-sdr, multimon-ng — `full` adds GNU Radio (gr-osmosdr), SDRangel, SatDump | LimeSDR-USB/Mini, RTL-SDR, HackRF |
 | `slogic` | PulseView + sigrok-cli built against `libsigrok-sipeed` (Sipeed SLogic driver), fx2lafw firmware | Sipeed SLogic Combo8 / 16U3 / 32U3 |
 | `eda` | KiCad 10 + KiKit + FreeRouting, ngspice/Xyce/Qucs-s/xschem, gerbv/KLayout, SKiDL | bench gear on USB-serial |
+| `cad` | Parametric CAD as code: build123d (Python/OCCT — STEP + STL), OpenSCAD, live preview via `cad-watch` + f3d | — |
 | `ai` | opencode, pi, claude-code, codex, gemini-cli, qwen-code, crush, goose, aider + context and MCP tooling | — |
 | `platformio` | PlatformIO in an FHS environment, for everything that is not Zephyr (Linux only) | Arduino/ESP/STM32 boards, probes |
 
@@ -68,11 +69,12 @@ flake.nix            outputs: devShells, packages (sigrok-*-sipeed, mcp-*, lab, 
                      overlays, nixosModules, darwinModules, homeManagerModules, templates, checks
 lib/                 hardware.nix (USB catalogue), udev-rules.nix, mk-lab.nix, mcp.nix (config renderers)
 labs/                catalogue.nix (name → description/template/usb/vm/mcp) + <env>/default.nix (packages)
-pkgs/                sigrok frontends against libsigrok-sipeed, mcp/ (three MCP servers),
+pkgs/                sigrok frontends against libsigrok-sipeed, python/ (the build123d stack),
+                     mcp/ (four MCP servers), cad-watch.nix (the CAD preview loop),
                      mcp-config.nix (pre-rendered client configs), lab.nix + lab.sh (the CLI)
 nixos/ darwin/ home/ modules (modules/registry.nix is shared by nixos + darwin)
 vm/                  guest.nix (cage kiosk NixOS), runner.sh (QEMU + usbredirect), default.nix
-templates/           zephyr (west T2 workspace), sdr, slogic, eda, ai
+templates/           zephyr (west T2 workspace), sdr, slogic, eda, cad, ai
 checks/              eval smokes (shells on x86_64-linux + aarch64-darwin, modules, VMs), mcp-render
 docs/                ENVIRONMENTS.md, MCP.md, HARDWARE.md, VM.md
 ```

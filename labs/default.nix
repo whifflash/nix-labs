@@ -18,6 +18,7 @@ let
     // import ./sdr { inherit pkgs lib labPkgs; }
     // import ./slogic { inherit pkgs lib labPkgs; }
     // import ./eda { inherit pkgs lib labPkgs; }
+    // import ./cad { inherit pkgs lib labPkgs; }
     // import ./ai {
       inherit
         pkgs

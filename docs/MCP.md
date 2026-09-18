@@ -10,13 +10,14 @@ what `lab mcp` adds is the config plumbing, because every client invented its ow
 | `slogic` | `mcp-sigrok` | `scan_devices`, `capture_data`, `decode_protocol` (I²C/SPI/UART/CAN + 100 more), `render_waveform`, `show_driver_details`, `check_firmware_status` … 14 tools |
 | `sdr` | `mcp-soapysdr` | `list_devices`, `probe_device`, `capture_iq`, `psd`, `spectrogram`, `scan_band`, `demod_fm`, `analyse_iq_file` |
 | `eda` | `mcp-kicad` | `list_projects`, `extract_project_netlist`, `find_component_connections`, `run_drc_check`, `analyze_bom`, `export_bom_csv`, `identify_circuit_patterns`, `generate_pcb_thumbnail` … 16 tools |
+| `cad` | `mcp-cad` | `run` (export STEP/STL/GLB/3MF/BREP), `measure` (volume, area, centre of mass, bbox, validity — from the B-rep, not a mesh), `preview` (renders as **images**), `list_api` (build123d symbols + signatures), `openscad_render` |
 | `ai` | `mcp-nixos`, `mcp-github`, `mcp-fetch`, `mcp-playwright` | nixpkgs/NixOS/home-manager option search, GitHub, URL→markdown, browser automation |
 
 `mcp-sigrok` is upstream's [KenosInc/sigrok-mcp-server](https://github.com/KenosInc/sigrok-mcp-server)
 wrapped so that `SIGROK_CLI_PATH` points at **our** `sigrok-cli-sipeed` — that is what makes it
 see a Sipeed SLogic, which the stock build cannot. `mcp-kicad` is
 [lamaalrajih/kicad-mcp](https://github.com/lamaalrajih/kicad-mcp) with `KICAD_CLI_PATH` pre-set.
-`mcp-soapysdr` is ours (see below).
+`mcp-soapysdr` and `mcp-cad` are ours (see below).
 
 ## Using it
 
@@ -68,6 +69,23 @@ server does not materialise or a format comes out malformed.
 `print()` or a chatty C++ library corrupts the stream. `mcp-soapysdr` shows the fix — dup the
 real stdout aside, point file descriptor 1 at stderr, and hand the saved descriptor to the MCP
 transport (`pkgs/mcp/soapysdr/src/mcp_soapysdr/__main__.py`).
+
+## mcp-cad
+
+build123d scripts in, solids and pictures out. A script assigns its solid to `result` (or calls
+`show_object()`), which is the same convention `cad-watch` uses, so the agent and the live
+preview build models identically.
+
+- `preview` renders the part with f3d offscreen from any of four camera directions and returns
+  the PNGs as image content, so the model can check its own work instead of guessing from numbers.
+- `measure` reads volume, area, centre of mass, bounding box and `is_valid` analytically from
+  the kernel. A mesh-derived figure would be an approximation; this is not.
+- `list_api` exists because the documented failure mode of LLM-written CAD is calling methods
+  that do not exist. Point the agent at it before it invents an API.
+- `openscad_render` covers the DSL half: source in, mesh plus a rendered PNG out. No STEP —
+  OpenSCAD cannot produce one.
+
+Scripts execute unsandboxed, as the user running the server.
 
 ## mcp-soapysdr
 

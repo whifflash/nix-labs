@@ -2,7 +2,13 @@
 # The `lab` CLI and the pre-rendered MCP configs are built in flake.nix and in
 # the home-manager module, because they need the environment catalogue too.
 { pkgs }:
+let
+  # build123d + its OCP bindings, plus our mcp_cad library, in one interpreter.
+  cadPython = import ./python { inherit pkgs; };
+in
 rec {
+  inherit (cadPython) python pythonEnv;
+
   # nixpkgs pins Sipeed's slogic-dev branch at 0ce0720 (2025-12-17); the branch
   # has moved on, and three of the newer commits matter for the SLogic16U3:
   #
@@ -33,9 +39,13 @@ rec {
   pulseview-sipeed = pkgs.pulseview.override { libsigrok = libsigrok-sipeed; };
   sigrok-cli-sipeed = pkgs.sigrok-cli.override { libsigrok = libsigrok-sipeed; };
 
+  # Live preview for the cad lab: rebuild on save, f3d reloads the export.
+  cad-watch = pkgs.callPackage ./cad-watch.nix { inherit (cadPython) python; };
+
   # MCP servers (see pkgs/mcp/ and docs/MCP.md). Named mcp-* so that
   # `nix run labs#mcp-<name>` — what the generated configs use — resolves.
   mcp-sigrok = pkgs.callPackage ./mcp/sigrok.nix { inherit sigrok-cli-sipeed; };
   mcp-kicad = pkgs.callPackage ./mcp/kicad.nix { };
   mcp-soapysdr = pkgs.callPackage ./mcp/soapysdr { };
+  mcp-cad = cadPython.python.pkgs.toPythonApplication cadPython.python.pkgs.mcp-cad;
 }

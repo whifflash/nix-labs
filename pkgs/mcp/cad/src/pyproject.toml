@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-cad"
+version = "0.1.0"
+description = "MCP server for parametric CAD as code (build123d, OpenSCAD)"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["mcp>=1.0.0", "build123d>=0.11"]
+
+[project.scripts]
+mcp-cad = "mcp_cad.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_cad"]
