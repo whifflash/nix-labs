@@ -36,6 +36,43 @@
       nixpkgs,
       ...
     }:
+    let
+      # The one overlay, defined before the module system so both
+      # flake.overlays and the perSystem pkgs import below use the same value
+      # without reaching back into `self` (which the module system can't).
+      #
+      # Besides adding ./pkgs, its darwin branch carries fixes the lab shells
+      # need when they build locally (nothing on aarch64-darwin substitutes
+      # from cache): manifold's test suite forms loop end pointers with
+      # `&triVerts[runIndex[run + 1]]` — `v[v.size()]`, UB that unhardened
+      # stdlibs tolerate but nixpkgs' darwin stdenv (hardened libc++)
+      # traps on. Rewriting to .data() + idx keeps all 419 tests running.
+      # Darwin-gated so Linux drv hashes stay identical to stock nixpkgs
+      # (cache-warm there — the shells are meant to substitute).
+      overlay =
+        final: prev:
+        # `prev` is the pre-overlay package set: the only thing overlays may
+        # force eagerly (in key/condition position). ./pkgs needs it too —
+        # its libsigrok-sipeed override must build on nixpkgs' package, not
+        # on itself once this overlay has replaced the attribute.
+        import ./pkgs {
+          pkgs = final;
+          inherit prev;
+        }
+        # Same rule for the gate: prev.stdenv, never final.stdenv.
+        // nixpkgs.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
+          manifold = prev.manifold.overrideAttrs (old: {
+            postPatch = (old.postPatch or "") + ''
+              substituteInPlace test/manifold_test.cpp \
+                --replace-fail '&gl_legacy.triVerts[gl_legacy.runIndex[run]]' 'gl_legacy.triVerts.data() + gl_legacy.runIndex[run]' \
+                --replace-fail '&gl_legacy.triVerts[gl_legacy.runIndex[run + 1]]' 'gl_legacy.triVerts.data() + gl_legacy.runIndex[run + 1]'
+              substituteInPlace test/test_main.cpp \
+                --replace-fail '&output.triVerts[output.runIndex[run]]' 'output.triVerts.data() + output.runIndex[run]' \
+                --replace-fail '&output.triVerts[output.runIndex[run + 1]]' 'output.triVerts.data() + output.runIndex[run + 1]'
+            '';
+          });
+        };
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -54,7 +91,7 @@
         # and the MCP servers, for consumers who prefer an overlay to `packages`.
         # `lab` is not here: it needs the catalogue and the rendered MCP configs,
         # so it comes from `packages.lab` or the home-manager module.
-        overlays.default = final: _prev: import ./pkgs { pkgs = final; };
+        overlays.default = overlay;
 
         # NixOS: `labs.enable` — udev rules for lab hardware, plugdev/dialout
         # for `labs.users`, and the `labs` flake-registry entry.
@@ -94,12 +131,22 @@
 
       perSystem =
         {
-          pkgs,
           lib,
           system,
           ...
         }:
         let
+          # Shells and packages evaluate through overlays.default so its
+          # darwin fixes apply to `nix develop labs#<env>` too, not only to
+          # consumers that apply the overlay — the shells must be buildable
+          # standalone on every supported machine. On Linux the overlay is
+          # identity for nixpkgs paths, so drv hashes (and cache hits) don't
+          # move.
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ overlay ];
+          };
+
           catalogue = import ./labs/catalogue.nix;
 
           # Several AI agents carry vendor licences nixpkgs marks unfree. Allow

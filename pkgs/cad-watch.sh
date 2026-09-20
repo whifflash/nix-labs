@@ -15,6 +15,10 @@ Usage: cad-watch [options] <model.py>
   --name NAME    base filename (default: preview)
   --no-viewer    rebuild on change but do not open f3d (useful over ssh)
 
+The viewer opens with --axes-grid (labelled X/Y/Z frame with scale ticks
+around the model). CAD_WATCH_F3D_ARGS adds further f3d flags, e.g.
+CAD_WATCH_F3D_ARGS="-x" for the corner orientation widget.
+
 The script should assign its solid to \`result\`, or pass it to show_object().
 Ctrl-C stops both the watcher and the viewer.
 EOF
@@ -86,8 +90,13 @@ if [ "$viewer" = 1 ]; then
     echo "cad-watch: nothing to show yet; fix the script and rerun" >&2
     exit 1
   fi
-  # f3d reloads the file itself when its mtime changes.
-  @F3D@ --watch --up "+Z" --grid --ambient-occlusion "$target" &
+  # f3d reloads the file itself when its mtime changes. --axes-grid draws a
+  # labelled X/Y/Z frame with scale ticks around the model — orientation is
+  # half the point of this preview (x = width, y = length, z = height).
+  # CAD_WATCH_F3D_ARGS is passed through verbatim; the unquoted expansion is
+  # intentional so it word-splits into separate flags.
+  # shellcheck disable=SC2086
+  @F3D@ --watch --up "+Z" --grid --ambient-occlusion --axes-grid ${CAD_WATCH_F3D_ARGS:-} "$target" &
   viewer_pid=$!
   # shellcheck disable=SC2064  # expand the pid now, not at trap time
   trap "kill $viewer_pid 2>/dev/null || true" EXIT INT TERM

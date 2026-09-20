@@ -23,12 +23,20 @@
       labPkgs.pythonEnv # build123d + trimesh/meshio/manifold3d
       labPkgs.cad-watch # the live-preview loop
       labPkgs.mcp-cad # agent access: run, measure, preview, list_api
+      labPkgs.cadViewer # f3d: viewer + the offscreen renderer the MCP server uses (no USD plugin on darwin — see pkgs/default.nix)
     ]
     ++ (with pkgs; [
       openscad-unstable # 2026 nightly: manifold CSG, far faster than 2021.01
       openscad-lsp # editor support for .scad
-      python3Packages.solidpython2 # write Python, emit .scad
-      f3d # viewer + the offscreen renderer the MCP server uses
+      # Write Python, emit .scad. Its whole test suite is one test that
+      # regenerates the examples' .scad files and diffs them against the
+      # committed ones — committed from Linux (glibc libm). sin/cos drift by
+      # 1 ulp under darwin's libm, so the regenerated floats never match on a
+      # Mac. Linux substitutes solidpython2 from cache (where the test
+      # passes); on darwin it builds locally, so skip the check there only.
+      (python3Packages.solidpython2.overridePythonAttrs (
+        lib.optionalAttrs stdenv.hostPlatform.isDarwin { doCheck = false; }
+      ))
       watchexec
     ])
     # Slicers: both pull wxGTK → webkitgtk, which nixpkgs marks broken on
@@ -44,7 +52,7 @@
 
     shellHook = ''
       echo "  model:   \$EDITOR model.py   then   cad-watch model.py   (f3d reloads on save)"
-      echo "  scad:    openscad part.scad  (Design → Automatic Reload and Preview)"
+      echo "  scad:    openscad-unstable part.scad  (Design → Automatic Reload and Preview)"
       echo "  export:  STEP for CNC, STL/3MF for printing — build123d does both"
       echo "  agent:   lab mcp cad --write"
       ${lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
