@@ -15,6 +15,7 @@
       labPkgs.pulseview-sipeed
       labPkgs.sigrok-cli-sipeed
       labPkgs.mcp-sigrok # agent access: scan, capture, decode, render
+      labPkgs.srdecode # text-side analysis: baud detect, UART frames, diffing
       labPkgs.libsigrok-sipeed
       pkgs.sigrok-firmware-fx2lafw # for the cheap fx2 "Saleae clone" analyzers
     ]
@@ -26,6 +27,7 @@
     shellHook = ''
       echo "  scan:  sigrok-cli --driver sipeed-slogic-analyzer --scan"
       echo "  gui:   pulseview"
+      echo "  look:  srdecode CAPTURE.sr --diff BASELINE.sr"
       echo "  agent: lab mcp slogic --write   (then ask it to capture and decode)"
     '';
   };

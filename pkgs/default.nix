@@ -46,7 +46,10 @@ let
       f3d;
 
   # build123d + its OCP bindings, plus our mcp_cad library, in one interpreter.
-  cadPython = import ./python { inherit pkgs; f3d = cadViewer; };
+  cadPython = import ./python {
+    inherit pkgs;
+    f3d = cadViewer;
+  };
 in
 rec {
   inherit (cadPython) python pythonEnv;
@@ -87,6 +90,10 @@ rec {
     inherit (cadPython) python;
     f3d = cadViewer;
   };
+
+  # Text-side capture analysis: baud estimation, UART decode, frame diffing.
+  # render_waveform ASCII art does not survive multi-million-sample captures.
+  srdecode = pkgs.callPackage ./srdecode { };
 
   # MCP servers (see pkgs/mcp/ and docs/MCP.md). Named mcp-* so that
   # `nix run labs#mcp-<name>` — what the generated configs use — resolves.
