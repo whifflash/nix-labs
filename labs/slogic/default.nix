@@ -16,6 +16,9 @@
       labPkgs.sigrok-cli-sipeed
       labPkgs.mcp-sigrok # agent access: scan, capture, decode, render
       labPkgs.srdecode # text-side analysis: baud detect, UART frames, diffing
+      # Scratch interpreter for ad-hoc capture analysis; same interpreter
+      # srdecode wraps, so the numpy in the closure is shared, not duplicated.
+      (pkgs.python3.withPackages (ps: [ ps.numpy ]))
       labPkgs.libsigrok-sipeed
       pkgs.sigrok-firmware-fx2lafw # for the cheap fx2 "Saleae clone" analyzers
     ]
@@ -28,6 +31,7 @@
       echo "  scan:  sigrok-cli --driver sipeed-slogic-analyzer --scan"
       echo "  gui:   pulseview"
       echo "  look:  srdecode CAPTURE.sr --diff BASELINE.sr"
+      echo "  calc:  python3 (numpy)"
       echo "  agent: lab mcp slogic --write   (then ask it to capture and decode)"
     '';
   };
