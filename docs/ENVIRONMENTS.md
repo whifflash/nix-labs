@@ -3,6 +3,9 @@
 Every environment is a `devShell`: `nix develop labs#<env>` (with the registry entry) or
 `nix develop github:whifflash/nix-labs#<env>`, `lab <env>` with the home-manager module.
 Linux-only tools are simply absent on macOS; everything else is identical on both.
+Every shell exports `LAB_ENV` (its name), so scripts, editors and coding agents can tell
+which environment they are running in; shells with MCP servers also export `LAB_MCP_CONFIG`
+(see [MCP.md](MCP.md)).
 
 ## Zephyr — `zephyr-arm`, `zephyr-riscv`, `zephyr-esp32`, `zephyr-full`
 
@@ -197,6 +200,8 @@ pio run -t upload && pio device monitor
 ## Templates — `lab init <env> [dir]`
 
 `nix flake init -t labs#{zephyr,sdr,slogic,eda,cad,ai}`: a `flake.nix` that re-exports the chosen shell
-(pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README; the Zephyr template adds
+(pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README; the cad template also
+ships a `CLAUDE.md`/`AGENTS.md` — the README's conventions written for a coding agent (worth
+copying to the other templates as each earns its own gotchas); the Zephyr template adds
 the `app/` manifest repo (west.yml with a small allowlist, CMakeLists, prj.conf, hello world).
 `lab init` rewrites the shell name for the variant you asked for.

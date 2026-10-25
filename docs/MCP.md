@@ -32,6 +32,12 @@ lab init eda ~/src/board            # scaffolds .mcp.json + opencode.json for yo
 Inside any lab shell, `$LAB_MCP_CONFIG` already points at a ready-made config with absolute
 store paths, so `claude --mcp-config "$LAB_MCP_CONFIG"` needs no files at all.
 
+MCP tools alone are not context: an agent also needs to know which engine to reach for, the
+`result` convention and that the shell's Python is complete (never pip-install beside it — the
+lab's PYTHONPATH leaks into venvs and breaks them). That is what the `CLAUDE.md` (+ `AGENTS.md`
+symlink) in the templates is for; in a project that predates `lab init`, copy it from
+`templates/<env>/`. `lab mcp <env> --write` is the same story for the servers themselves.
+
 `--write` merges rather than overwrites, and refuses to replace a server entry that is already
 there unless you pass `--force`.
 

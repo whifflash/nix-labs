@@ -38,19 +38,27 @@ let
   missing = lib.subtractLists (lib.attrNames defs) (lib.attrNames expected);
   extra = lib.subtractLists (lib.attrNames expected) (lib.attrNames defs);
 
-  # An environment with MCP servers gets LAB_MCP_CONFIG pointing at its
-  # ready-made canonical config (store paths — the servers are in the shell
-  # anyway), so `claude --mcp-config "$LAB_MCP_CONFIG"` works with no setup.
-  withMcp =
+  # Every shell exports LAB_ENV (its name), so anything running inside —
+  # scripts, editors, coding agents — can tell which lab it is in without
+  # guessing from PATH. Environments with MCP servers additionally get
+  # LAB_MCP_CONFIG pointing at their ready-made canonical config (store paths —
+  # the servers are in the shell anyway), so `claude --mcp-config
+  # "$LAB_MCP_CONFIG"` works with no setup.
+  withEnv =
     name: def:
     let
       hasMcp = (catalogue.${name}.mcp or [ ]) != [ ];
     in
     def
-    // lib.optionalAttrs hasMcp {
-      env = (def.env or { }) // {
-        LAB_MCP_CONFIG = "${mcpConfigs}/${name}/store.json";
-      };
+    // {
+      env =
+        (def.env or { })
+        // {
+          LAB_ENV = name;
+        }
+        // lib.optionalAttrs hasMcp {
+          LAB_MCP_CONFIG = "${mcpConfigs}/${name}/store.json";
+        };
     };
 in
 assert lib.assertMsg (
@@ -59,4 +67,4 @@ assert lib.assertMsg (
 assert lib.assertMsg (
   extra == [ ]
 ) "labs/ defines environments missing from labs/catalogue.nix: ${toString extra}";
-lib.mapAttrs (name: def: mkLab (catalogue.${name} // (withMcp name def) // { inherit name; })) defs
+lib.mapAttrs (name: def: mkLab (catalogue.${name} // (withEnv name def) // { inherit name; })) defs
