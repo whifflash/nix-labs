@@ -10,7 +10,9 @@ usage() {
   cat <<EOF
 Usage:
   lab list                       environments in the nix-labs catalogue
-  lab <env> [-- cmd [args…]]     enter the environment (or run cmd inside it)
+  lab <env> [-- cmd [args…]]     enter the environment (or run cmd inside it);
+                                 in a project dir, also registers the env's
+                                 MCP servers in ./.mcp.json
   lab init <env> [dir]           scaffold a project pinned to <env> (nix flake init -t)
   lab vm <env> [runner args…]    run the QEMU fallback VM for <env> (see: lab vm <env> --help)
   lab mcp <env> [opts]           MCP server config for <env> (entries marked [mcp])
@@ -208,12 +210,26 @@ update)
   require_env "$1"
   env="$1"
   shift
+  run=()
   if [ "${1:-}" = "--" ]; then
     shift
     [ $# -gt 0 ] || die "nothing to run after --"
-    exec nix develop "$flake#$env" -c "$@"
+    run=(-c "$@")
+  else
+    [ $# -eq 0 ] || die "unexpected arguments: $* (use -- to run a command)"
   fi
-  [ $# -eq 0 ] || die "unexpected arguments: $* (use -- to run a command)"
-  exec nix develop "$flake#$env"
+
+  # Entering also wires the agent side: inside a project directory, register
+  # this environment's MCP servers — the `lab mcp <env> --write` step everyone
+  # forgets. Servers already being registered is the normal case and stays
+  # quiet; nothing the project configured itself is ever replaced (the same
+  # merge-if-absent rule as `lab mcp` without `--force`).
+  if jq -e --arg e "$env" '(.[$e].mcp // []) | length > 0' "$catalogue" >/dev/null 2>&1 && {
+    [ -f .mcp.json ] || git rev-parse -q --is-inside-work-tree >/dev/null 2>&1
+  }; then
+    mcp_cmd "$env" --client claude --write 2>/dev/null || true
+  fi
+
+  exec nix develop "$flake#$env" ${run+"${run[@]}"}
   ;;
 esac

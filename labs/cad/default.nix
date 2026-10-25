@@ -54,7 +54,7 @@
       echo "  model:   \$EDITOR model.py   then   cad-watch model.py   (f3d reloads on save)"
       echo "  scad:    openscad-unstable part.scad  (Design → Automatic Reload and Preview)"
       echo "  export:  STEP for CNC, STL/3MF for printing — build123d does both"
-      echo "  agent:   lab mcp cad --write"
+      echo "  agent:   .mcp.json is wired on entry (lab cad); via direnv: lab mcp cad --write"
       ${lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
         echo "  note:    no slicer here — nixpkgs' PrusaSlicer/OrcaSlicer need webkitgtk,"
         echo "           which is broken on darwin; install them from prusa3d.com / orcaslicer.com"

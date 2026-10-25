@@ -36,7 +36,14 @@ MCP tools alone are not context: an agent also needs to know which engine to rea
 `result` convention and that the shell's Python is complete (never pip-install beside it — the
 lab's PYTHONPATH leaks into venvs and breaks them). That is what the `CLAUDE.md` (+ `AGENTS.md`
 symlink) in the templates is for; in a project that predates `lab init`, copy it from
-`templates/<env>/`. `lab mcp <env> --write` is the same story for the servers themselves.
+`templates/<env>/`.
+
+The servers wire themselves these days: `lab <env>` run inside a project directory registers
+that environment's servers in `./.mcp.json` as part of entering — merge-if-absent, never
+touching entries the project set itself (the `lab mcp <env> --write` rule, without the
+forgetting). Entering through direnv or a direct `nix develop` bypasses `lab`, which is why
+the templates ship the file pre-written; there, `lab mcp <env> --write` remains the manual
+equivalent.
 
 `--write` merges rather than overwrites, and refuses to replace a server entry that is already
 there unless you pass `--force`.
