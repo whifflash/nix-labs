@@ -66,7 +66,7 @@ in
 
     shellHook = ''
       echo "  agents: opencode | pi | claude | codex | gemini | qwen | crush | goose | aider"
-      echo "  mcp:    lab mcp ai --write     (adds nixos/github/fetch/playwright to this project)"
+      echo "  mcp:    .mcp.json is wired on entry (lab ai — nixos/github/fetch/playwright); via direnv: lab mcp ai --write"
       echo "  keys:   read from the environment / \$HOME as usual —"
       echo "          ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, GITHUB_PERSONAL_ACCESS_TOKEN;"
       echo "          ~/.claude ~/.config/opencode ~/.pi ~/.codex are used untouched."

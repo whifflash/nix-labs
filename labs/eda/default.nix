@@ -72,6 +72,7 @@ in
       }
       echo "  sim:    qucs-s | ngspice -b sim/rc.cir${lib.optionalString isLinux " | xschem | Xyce"}"
       echo "  check:  gerbv | klayout | python -c 'import skidl'"
+      echo "  agent:  .mcp.json is wired on entry (lab eda); via direnv: lab mcp eda --write"
     '';
   };
 }

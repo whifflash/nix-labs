@@ -200,8 +200,9 @@ pio run -t upload && pio device monitor
 ## Templates — `lab init <env> [dir]`
 
 `nix flake init -t labs#{zephyr,sdr,slogic,eda,cad,ai}`: a `flake.nix` that re-exports the chosen shell
-(pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README; the cad template also
-ships a `CLAUDE.md`/`AGENTS.md` — the README's conventions written for a coding agent (worth
-copying to the other templates as each earns its own gotchas); the Zephyr template adds
-the `app/` manifest repo (west.yml with a small allowlist, CMakeLists, prj.conf, hello world).
+(pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README, and `CLAUDE.md` (+ `AGENTS.md`
+symlink) — the README's conventions rewritten for a coding agent: which engine to reach for, the
+gotchas that cost a session to rediscover, and that the shell is complete (no pip/venv beside it).
+The Zephyr template adds the `app/` manifest repo (west.yml with a small allowlist, CMakeLists,
+prj.conf, hello world).
 `lab init` rewrites the shell name for the variant you asked for.

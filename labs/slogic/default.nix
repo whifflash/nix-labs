@@ -32,7 +32,7 @@
       echo "  gui:   pulseview"
       echo "  look:  srdecode CAPTURE.sr --diff BASELINE.sr"
       echo "  calc:  python3 (numpy)"
-      echo "  agent: lab mcp slogic --write   (then ask it to capture and decode)"
+      echo "  agent: .mcp.json is wired on entry (lab slogic); via direnv: lab mcp slogic --write"
     '';
   };
 }

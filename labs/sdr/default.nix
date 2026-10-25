@@ -48,7 +48,7 @@ let
     shellHook = ''
       echo "  find:  LimeUtil --find    SoapySDRUtil --find"
       echo "  gui:   sdrpp | gqrx | LimeSuiteGUI | urh"
-      echo "  agent: lab mcp sdr --write   (then ask it for a PSD or a band scan)"
+      echo "  agent: .mcp.json is wired on entry (lab sdr); via direnv: lab mcp sdr --write"
     '';
   };
 in
