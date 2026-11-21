@@ -33,6 +33,8 @@ let
         # Our own: a library so `cad-watch` can import the same runner the MCP
         # server uses; pkgs/default.nix exposes the CLI via toPythonApplication.
         mcp-cad = pyfinal.callPackage ../mcp/cad { inherit f3d; };
+        # Shared MCP plumbing (docs/MCP-RULES.md), built against this interpreter.
+        labmcp = pyfinal.callPackage ../mcp/labmcp { };
       };
   };
 in

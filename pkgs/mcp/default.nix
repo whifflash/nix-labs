@@ -1,6 +1,10 @@
 # MCP servers the labs expose, as a catalogue:
 #
-#   <name> = { package; args ? [ ]; env ? { }; description; }
+#   <name> = { package; args ? [ ]; env ? { }; description; strict ? false; }
+#
+# strict: the server follows docs/MCP-RULES.md in full (titled, annotated tools;
+# unknown arguments rejected), and checks/mcp-smoke.nix holds it to that. Every
+# server built here is smoke-tested for clean stdout regardless.
 #
 # Kept independent of labs/ (which needs the zephyr-nix input) so that a
 # consumer's home-manager module can render MCP configs from `pkgs` alone.
@@ -17,17 +21,25 @@
 
   soapysdr = {
     package = labPkgs.mcp-soapysdr;
+    strict = true;
     description = "Software-defined radios via SoapySDR (LimeSDR, RTL-SDR, HackRF, …): probe, capture IQ, PSD and spectrogram images, band scans, FM demodulation";
   };
 
   cad = {
     package = labPkgs.mcp-cad;
+    strict = true;
     description = "Parametric CAD with build123d: run a script, export STEP/STL/3MF, render previews as images, report exact mass properties from the B-rep; also compiles OpenSCAD";
   };
 
   kicad = {
     package = labPkgs.mcp-kicad;
     description = "KiCad projects: list/inspect projects, extract netlists and BOMs, run DRC via kicad-cli, visualise boards, recognise circuit patterns";
+  };
+
+  photocraft = {
+    package = labPkgs.mcp-photocraft;
+    strict = true; # upstream's own server already does all of it
+    description = "PhotoCraft image editing: open/save PSD and raster files in the project, run any of 500+ editor commands (adjustment layers, filters, type, selections), inspect the layer tree, render previews as images";
   };
 
   # Off-the-shelf servers from nixpkgs — declared here so `lab mcp ai` produces

@@ -95,10 +95,14 @@ rec {
   # render_waveform ASCII art does not survive multi-million-sample captures.
   srdecode = pkgs.callPackage ./srdecode { };
 
+  # The photocraft lab: desktop app + headless CLI (not in nixpkgs).
+  photocraft = pkgs.callPackage ./photocraft.nix { };
+
   # MCP servers (see pkgs/mcp/ and docs/MCP.md). Named mcp-* so that
   # `nix run labs#mcp-<name>` — what the generated configs use — resolves.
   mcp-sigrok = pkgs.callPackage ./mcp/sigrok.nix { inherit sigrok-cli-sipeed; };
   mcp-kicad = pkgs.callPackage ./mcp/kicad.nix { };
   mcp-soapysdr = pkgs.callPackage ./mcp/soapysdr { };
   mcp-cad = cadPython.python.pkgs.toPythonApplication cadPython.python.pkgs.mcp-cad;
+  mcp-photocraft = pkgs.callPackage ./mcp/photocraft.nix { inherit photocraft; };
 }

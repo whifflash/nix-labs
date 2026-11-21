@@ -12,6 +12,7 @@
   buildPythonPackage,
   hatchling,
   mcp,
+  labmcp,
   build123d,
   f3d,
   openscad-unstable,
@@ -28,6 +29,7 @@ buildPythonPackage {
 
   dependencies = [
     mcp
+    labmcp
     build123d
   ];
 

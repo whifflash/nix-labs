@@ -184,6 +184,49 @@ on darwin — so install those from their own releases.
 **Which engine**: build123d unless the part is trivial or you are remixing an existing `.scad`
 design. OpenSCAD cannot produce STEP, and its fillets are approximations you build by hand.
 
+## Image editing — `photocraft`
+
+[PhotoCraft](https://github.com/storytold/photocraft) is an open-source, clean-room
+reimplementation of Photoshop in pure Rust (egui on wgpu). It has layers, masks, adjustment
+layers, layer styles, type, vectors, and PSD/PSB files that round-trip. It is not in nixpkgs, so
+`pkgs/photocraft.nix` builds it from source, the same way upstream's release packaging does
+(both binaries, HEIF on). Nothing substitutes it, so the first entry compiles it (measured:
+~25 min on a 2-core VM, less on a workstation), and so does every version bump.
+
+| | |
+|---|---|
+| `photocraft` | the desktop app. The menus, shortcuts and panels follow Photoshop. |
+| `photocraft-cli` | headless: `convert`, `info` (document as JSON), `run` (open → commands → save), `batch` (an action list over a folder), `droplet`, `commands` (the registry) |
+| `mcp-photocraft` | the CLI's MCP server, rooted at the project directory |
+
+```sh
+lab init photocraft ~/src/retouch && cd ~/src/retouch && direnv allow
+photocraft photo.psd
+photocraft-cli run photo.psd --cmd filter.sharpen.smartSharpen --params '{"amount":80}' --out photo.png
+photocraft-cli batch --actions actions/grade.json --in raw --out graded --format png
+photocraft-cli commands --filter curves
+```
+
+Every menu item, tool and dialog runs one of 500+ engine commands, and the app, the CLI and
+the MCP server all call the same ones. An edit you find by hand therefore becomes an action
+list, a recorded action or an `.atn` set that `batch` replays, and the agent can do the same.
+See [MCP.md](MCP.md).
+
+**GPU**: the app renders through wgpu and needs Vulkan or EGL from the host's drivers. On
+NixOS that is `hardware.graphics.enable`. On another Linux, the nixpkgs loaders do not find
+the distro's drivers, so start the app through [nixGL](https://github.com/nix-community/nixGL).
+The CLI and the MCP server are CPU-only and run anywhere.
+
+**Linux runtime**: winit, wgpu and the file dialog `dlopen` their libraries, so the binary
+carries an rpath to them. The app's own start-up library check is patched to look there too.
+Otherwise it would trust the host's `ldconfig` cache on a non-NixOS host, and it would not open
+the window through Xwayland for a pen on Wayland. File › Open uses the XDG file-chooser portal, or
+`zenity` if one is on `PATH`. A bare window-manager session with neither can still paste a
+copied image. Drag and drop needs X11 or Xwayland, because winit 0.30 has none on Wayland.
+
+**Status**: upstream calls it early alpha. It is broad, but not yet a daily Photoshop
+replacement, so keep originals.
+
 ## PlatformIO — `platformio` (Linux only)
 
 For boards and frameworks outside Zephyr (Arduino, ESP-IDF, STM32Cube, …). PlatformIO
@@ -199,7 +242,7 @@ pio run -t upload && pio device monitor
 
 ## Templates — `lab init <env> [dir]`
 
-`nix flake init -t labs#{zephyr,sdr,slogic,eda,cad,ai}`: a `flake.nix` that re-exports the chosen shell
+`nix flake init -t labs#{zephyr,sdr,slogic,eda,cad,photocraft,ai}`: a `flake.nix` that re-exports the chosen shell
 (pinned via `flake.lock`), `.envrc` (`use flake`), `.gitignore`, README, and `CLAUDE.md` (+ `AGENTS.md`
 symlink) — the README's conventions rewritten for a coding agent: which engine to reach for, the
 gotchas that cost a session to rediscover, and that the shell is complete (no pip/venv beside it).

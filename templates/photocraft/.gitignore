@@ -1,0 +1,9 @@
+.direnv/
+result
+result-*
+
+# Batch output — the originals and the action lists are the source of truth.
+graded/
+
+# The control-channel token (`photocraft --control … --control-token-file .private/control.token`).
+.private/

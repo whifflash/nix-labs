@@ -106,6 +106,14 @@
     mcp = [ "cad" ];
   };
 
+  photocraft = {
+    description = "Image editing — PhotoCraft (open-source Photoshop reimplementation in Rust: layers, adjustment layers, styles, PSD) + photocraft-cli for scripted and batch edits";
+    template = "photocraft";
+    usb = [ ];
+    vm = null;
+    mcp = [ "photocraft" ];
+  };
+
   ai = {
     description = "AI coding agents — opencode, pi, claude-code, codex, gemini-cli, qwen-code, crush, goose, aider + context and MCP tooling";
     template = "ai";

@@ -18,6 +18,9 @@ let
   # a `with python3Packages;` would NOT shadow a `soapysdr` function argument.
   soapy = python3Packages.soapysdr;
 
+  # Shared MCP plumbing (docs/MCP-RULES.md), built against this package set.
+  labmcp = python3Packages.callPackage ../labmcp { };
+
   # Vendor modules the server should be able to see. SoapySDR only looks in its
   # own store path, so the search path is baked into the wrapper.
   soapyModules = [
@@ -38,6 +41,7 @@ python3Packages.buildPythonApplication {
   dependencies = [
     soapy
     python3Packages.mcp
+    labmcp
     python3Packages.numpy
     python3Packages.scipy
     python3Packages.matplotlib

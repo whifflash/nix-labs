@@ -2,42 +2,29 @@
 
 Transport is stdio JSON-RPC, so **stdout belongs to the protocol**. SoapySDR's
 C++ core and its driver modules write probe chatter straight to file descriptor
-1, which would corrupt every message — so before anything else, fd 1 is pointed
-at stderr and the real stdout is handed to Python as `sys.stdout` for the MCP
-transport to use. Do not print() to stdout anywhere in this package.
+1, so labmcp.protect_stdout() runs before anything loads them. Do not print() to
+stdout anywhere in this package. The rest of docs/MCP-RULES.md applies too.
 """
 
 from __future__ import annotations
 
-import io
-import os
-import sys
+import labmcp
 
+labmcp.protect_stdout()
 
-def _protect_stdout() -> None:
-    real_stdout_fd = os.dup(1)
-    os.dup2(2, 1)  # C-level writes to fd 1 now land on stderr
-    sys.stdout = io.TextIOWrapper(
-        io.FileIO(real_stdout_fd, "w", closefd=True),
-        encoding="utf-8",
-        line_buffering=True,
-    )
-
-
-_protect_stdout()
-
+import io  # noqa: E402
 import json  # noqa: E402
-from pathlib import Path  # noqa: E402
+import os  # noqa: E402
+import sys  # noqa: E402
 from typing import Annotated, Any  # noqa: E402
 
 import numpy as np  # noqa: E402
-from mcp.server.fastmcp import FastMCP  # noqa: E402
 from mcp.server.fastmcp.utilities.types import Image  # noqa: E402
 from pydantic import Field  # noqa: E402
 
 from . import radio  # noqa: E402
 
-mcp = FastMCP(
+mcp = labmcp.server(
     "soapysdr",
     instructions=(
         "Controls a software-defined radio through SoapySDR. Start with list_devices, "
@@ -47,8 +34,8 @@ mcp = FastMCP(
     ),
 )
 
-# Captures are written under this directory unless a tool is given an absolute path.
-WORKDIR = Path(os.environ.get("MCP_SOAPYSDR_WORKDIR", os.getcwd()))
+# Captures and recordings are read and written beneath this directory, never outside it.
+FILES = labmcp.Workspace.from_env("MCP_SOAPYSDR_WORKDIR")
 MAX_SAMPLES = int(os.environ.get("MCP_SOAPYSDR_MAX_SAMPLES", "33554432"))  # 32 Mi ≈ 256 MB
 
 Device = Annotated[
@@ -62,11 +49,6 @@ Gain = Annotated[
     float | None,
     Field(default=None, description="Overall RX gain in dB. Omit to use the device's AGC."),
 ]
-
-
-def _resolve(path: str) -> Path:
-    p = Path(path).expanduser()
-    return p if p.is_absolute() else WORKDIR / p
 
 
 def _plot_png(fig: Any) -> Image:
@@ -97,7 +79,7 @@ def _num_samples(sample_rate: float, seconds: float) -> int:
     return max(1024, n)
 
 
-@mcp.tool()
+@mcp.tool(title="List radios", annotations=labmcp.READ_ONLY)
 def list_devices(device: Device = None) -> list[dict[str, str]]:
     """List the SDRs SoapySDR can see, with the device strings to address them."""
     found = radio.enumerate_devices(device)
@@ -112,13 +94,13 @@ def list_devices(device: Device = None) -> list[dict[str, str]]:
     return found
 
 
-@mcp.tool()
+@mcp.tool(title="Probe radio", annotations=labmcp.READ_ONLY)
 def probe_device(device: Device = None) -> dict[str, Any]:
     """Report a radio's driver, RX channels, tunable range, sample rates, gains and antennas."""
     return radio.describe(device)
 
 
-@mcp.tool()
+@mcp.tool(title="Capture IQ to file", annotations=labmcp.RECORDS)
 def capture_iq(
     center_freq_hz: Annotated[float, Field(description="Tuner centre frequency in Hz")],
     sample_rate_hz: Annotated[float, Field(description="Sample rate in Hz (see probe_device)")],
@@ -139,7 +121,7 @@ def capture_iq(
         gain_db=gain_db,
         antenna=antenna,
     )
-    out = _resolve(path)
+    out = FILES.path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     cap.samples.astype(np.complex64).tofile(out)
     meta = {
@@ -158,7 +140,7 @@ def capture_iq(
 
 # structured_output=False: the result is an image plus a JSON blob, which is
 # content, not a schema-able return value.
-@mcp.tool(structured_output=False)
+@mcp.tool(title="Power spectrum", annotations=labmcp.OBSERVES, structured_output=False)
 def psd(
     center_freq_hz: Annotated[float, Field(description="Tuner centre frequency in Hz")],
     sample_rate_hz: Annotated[float, Field(description="Sample rate in Hz")],
@@ -199,7 +181,7 @@ def psd(
     ]
 
 
-@mcp.tool(structured_output=False)
+@mcp.tool(title="Spectrogram", annotations=labmcp.OBSERVES, structured_output=False)
 def spectrogram(
     center_freq_hz: Annotated[float, Field(description="Tuner centre frequency in Hz")],
     sample_rate_hz: Annotated[float, Field(description="Sample rate in Hz")],
@@ -241,7 +223,7 @@ def spectrogram(
     return _plot_png(fig)
 
 
-@mcp.tool()
+@mcp.tool(title="Scan band", annotations=labmcp.OBSERVES)
 def scan_band(
     start_hz: Annotated[float, Field(description="Lower edge of the span in Hz")],
     stop_hz: Annotated[float, Field(description="Upper edge of the span in Hz")],
@@ -275,7 +257,7 @@ def scan_band(
     }
 
 
-@mcp.tool()
+@mcp.tool(title="Demodulate FM to WAV", annotations=labmcp.RECORDS)
 def demod_fm(
     center_freq_hz: Annotated[float, Field(description="Station frequency in Hz, e.g. 100.1e6")],
     seconds: Annotated[float, Field(gt=0, le=60)] = 5.0,
@@ -293,7 +275,7 @@ def demod_fm(
         gain_db=gain_db,
     )
     audio, rate = radio.demod_fm(cap)
-    out = _resolve(path)
+    out = FILES.path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     radio.write_wav(out, audio, rate)
     return {
@@ -304,13 +286,13 @@ def demod_fm(
     }
 
 
-@mcp.tool(structured_output=False)
+@mcp.tool(title="Analyse IQ file", annotations=labmcp.READ_ONLY, structured_output=False)
 def analyse_iq_file(
     path: Annotated[str, Field(description="A .cf32 file written by capture_iq")],
     nfft: Annotated[int, Field(ge=256, le=65536)] = 4096,
 ) -> list:
     """Plot the spectrum of a previously captured IQ file — no radio needed."""
-    src = _resolve(path)
+    src = FILES.path(path)
     meta_path = src.with_suffix(src.suffix + ".json")
     if not meta_path.exists():
         raise radio.RadioError(f"{meta_path} is missing — capture_iq writes it alongside the samples")

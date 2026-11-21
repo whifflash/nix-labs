@@ -122,6 +122,10 @@
             path = ./templates/eda;
             description = "Circuit design + simulation workspace (KiCad, ngspice) pinned to the nix-labs eda shell";
           };
+          photocraft = {
+            path = ./templates/photocraft;
+            description = "Image-editing workspace (PhotoCraft app, CLI batch actions, MCP) pinned to the nix-labs photocraft shell";
+          };
           ai = {
             path = ./templates/ai;
             description = "Project wired to the nix-labs ai shell (agents + MCP servers)";
@@ -259,6 +263,13 @@
                 mcpConfigs
                 catalogue
                 ;
+            };
+            # Every MCP server we build answers over stdio with clean stdout; the
+            # `strict` ones also follow docs/MCP-RULES.md (titles, hints, unknown
+            # arguments rejected). The nixpkgs servers want network or tokens.
+            mcp-smoke = import ./checks/mcp-smoke.nix {
+              inherit pkgs lib;
+              servers = lib.filterAttrs (name: _: labPkgs ? "mcp-${name}") mcpServers;
             };
             vm-runner-script = pkgs.writeShellApplication {
               name = "lab-vm-runner-check";

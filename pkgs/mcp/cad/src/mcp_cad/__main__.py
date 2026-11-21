@@ -1,32 +1,19 @@
 """MCP server for parametric CAD: build123d scripts in, solids and pictures out.
 
 Transport is stdio JSON-RPC, so **stdout belongs to the protocol**. OpenCASCADE
-and its Python bindings write to file descriptor 1 on their own initiative, which
-would corrupt every message — so fd 1 is pointed at stderr before anything else
-and the real stdout is handed to Python for the MCP transport. Do not print() to
-stdout anywhere in this package.
+and its Python bindings write to file descriptor 1 on their own initiative, so
+labmcp.protect_stdout() runs before anything imports them. Do not print() to
+stdout anywhere in this package. The rest of docs/MCP-RULES.md applies too.
 """
 
 from __future__ import annotations
 
-import io
-import os
-import sys
+import labmcp
 
-
-def _protect_stdout() -> None:
-    real_stdout_fd = os.dup(1)
-    os.dup2(2, 1)  # C-level writes to fd 1 now land on stderr
-    sys.stdout = io.TextIOWrapper(
-        io.FileIO(real_stdout_fd, "w", closefd=True),
-        encoding="utf-8",
-        line_buffering=True,
-    )
-
-
-_protect_stdout()
+labmcp.protect_stdout()
 
 import inspect  # noqa: E402
+import os  # noqa: E402
 import json  # noqa: E402
 import shutil  # noqa: E402
 import subprocess  # noqa: E402
@@ -34,13 +21,12 @@ import tempfile  # noqa: E402
 from pathlib import Path  # noqa: E402
 from typing import Annotated, Any  # noqa: E402
 
-from mcp.server.fastmcp import FastMCP  # noqa: E402
 from mcp.server.fastmcp.utilities.types import Image  # noqa: E402
 from pydantic import Field  # noqa: E402
 
 from . import runner  # noqa: E402
 
-mcp = FastMCP(
+mcp = labmcp.server(
     "cad",
     instructions=(
         "Parametric CAD. Write build123d Python, assign the solid to `result`, and pass it "
@@ -52,7 +38,8 @@ mcp = FastMCP(
     ),
 )
 
-WORKDIR = Path(os.environ.get("MCP_CAD_WORKDIR", os.getcwd()))
+# Scripts run here, and exports land beneath it; nothing is written outside it.
+FILES = labmcp.Workspace.from_env("MCP_CAD_WORKDIR")
 F3D = os.environ.get("MCP_CAD_F3D", "f3d")
 OPENSCAD = os.environ.get("MCP_CAD_OPENSCAD", "openscad")
 
@@ -62,7 +49,7 @@ Script = Annotated[
 ]
 OutDir = Annotated[
     str,
-    Field(default="build", description="Directory for exports, relative to the working directory."),
+    Field(default="build", description="Directory for exports, relative to the workspace (the project)."),
 ]
 
 # Camera directions f3d understands, as (name, --camera-direction value).
@@ -74,9 +61,9 @@ VIEWS = {
 }
 
 
-def _resolve(path: str) -> Path:
-    p = Path(path).expanduser()
-    return p if p.is_absolute() else WORKDIR / p
+def _target(out_dir: str, name: str) -> Path:
+    """The export base path `<out_dir>/<name>`, refused if it leaves the workspace."""
+    return FILES.path(Path(out_dir) / name)
 
 
 def _render(model_file: Path, view: str, size: tuple[int, int]) -> bytes:
@@ -105,7 +92,7 @@ def _render(model_file: Path, view: str, size: tuple[int, int]) -> bytes:
         return png.read_bytes()
 
 
-@mcp.tool()
+@mcp.tool(title="Run and export", annotations=labmcp.RUNS_CODE)
 def run(
     script: Script,
     formats: Annotated[
@@ -116,18 +103,21 @@ def run(
     name: Annotated[str, Field(default="model", description="Base filename for the exports")] = "model",
 ) -> dict[str, Any]:
     """Execute a build123d script and export the solid. STEP keeps the B-rep; STL/3MF are meshes."""
-    model = runner.run(script, workdir=WORKDIR)
-    written = runner.export(model.shape, _resolve(out_dir), name, formats)
+    target = _target(out_dir, name)
+    model = runner.run(script, workdir=FILES.root)
+    written = runner.export(model.shape, target.parent, target.name, formats)
     return {"exports": written, **runner.measure(model.shape)}
 
 
-@mcp.tool()
+# measure and preview only read the model, but they execute the script to get
+# it, and a script can do anything: RUNS_CODE, not READ_ONLY.
+@mcp.tool(title="Measure", annotations=labmcp.RUNS_CODE)
 def measure(script: Script) -> dict[str, Any]:
     """Volume, surface area, centre of mass, bounding box and validity — exact, from the kernel."""
-    return runner.measure(runner.run(script, workdir=WORKDIR).shape)
+    return runner.measure(runner.run(script, workdir=FILES.root).shape)
 
 
-@mcp.tool(structured_output=False)
+@mcp.tool(title="Preview", annotations=labmcp.RUNS_CODE, structured_output=False)
 def preview(
     script: Script,
     views: Annotated[
@@ -142,7 +132,7 @@ def preview(
     if unknown:
         raise ValueError(f"unknown view(s) {unknown}; have: {', '.join(VIEWS)}")
 
-    model = runner.run(script, workdir=WORKDIR)
+    model = runner.run(script, workdir=FILES.root)
     with tempfile.TemporaryDirectory() as tmp:
         exported = runner.export(model.shape, Path(tmp), "preview", ["glb"])
         glb = Path(exported["glb"]["path"])
@@ -153,7 +143,7 @@ def preview(
     return out
 
 
-@mcp.tool()
+@mcp.tool(title="List build123d API", annotations=labmcp.READ_ONLY)
 def list_api(
     pattern: Annotated[
         str, Field(default="", description="Case-insensitive substring, e.g. 'fillet' or 'Box'")
@@ -186,7 +176,8 @@ def list_api(
     }
 
 
-@mcp.tool(structured_output=False)
+# OpenSCAD's language has no way to run programs or write files: WRITES_FILES.
+@mcp.tool(title="Render OpenSCAD", annotations=labmcp.WRITES_FILES, structured_output=False)
 def openscad_render(
     source: Annotated[str, Field(description="OpenSCAD source (.scad language, not Python)")],
     out_dir: OutDir = "build",
@@ -197,11 +188,11 @@ def openscad_render(
     if shutil.which(OPENSCAD) is None:
         raise RuntimeError(f"{OPENSCAD} not found on PATH — the cad lab provides it")
 
-    target_dir = _resolve(out_dir)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    scad = target_dir / f"{name}.scad"
+    target = _target(out_dir, name)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    scad = target.parent / f"{target.name}.scad"
     scad.write_text(source)
-    mesh = target_dir / f"{name}.{export_format}"
+    mesh = target.parent / f"{target.name}.{export_format}"
 
     proc = subprocess.run(
         [OPENSCAD, "-o", str(mesh), str(scad)], capture_output=True, text=True, timeout=600

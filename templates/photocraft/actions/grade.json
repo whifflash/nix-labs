@@ -1,0 +1,5 @@
+[
+  ["filter.sharpen.smartSharpen", { "amount": 80, "radius": 1.0, "reduceNoise": 10 }],
+  ["layer.newAdjustmentLayer.curves", { "points": [[0, 0], [64, 48], [192, 212], [255, 255]] }],
+  ["layer.newAdjustmentLayer.vibrance", { "vibrance": 25, "saturation": 0 }]
+]
